@@ -34,7 +34,7 @@ public class MonkeyService {
     @Transactional(readOnly = true)
     public Monkey findById(Long id) {
         return monkeyRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Monkey not found"));
+                .orElseThrow(() -> new RuntimeException("Monkey with ID " + id + " not found"));
     }
 
     @Transactional
@@ -58,32 +58,37 @@ public class MonkeyService {
 
     private void validateBusinessRules(Monkey monkey) {
         if (monkey.getSpecies() == null || monkey.getSpecies().trim().isEmpty()) {
-            throw new RuntimeException("Species is required");
+            throw new IllegalArgumentException("Species is required for the monkey");
         }
 
         if (monkey.getAverageWeight() <= 0) {
-            throw new RuntimeException("Average weight must be greater than 0");
+            throw new IllegalArgumentException("Average weight must be greater than 0");
         }
 
         if (monkey.getHabitat() == null || monkey.getHabitat().trim().isEmpty()) {
-            throw new RuntimeException("Habitat is required");
+            throw new IllegalArgumentException("Habitat is required");
         }
     }
 
     private void validateCreateMonkeyRules(Monkey monkey, MultipartFile file, HttpServletRequest request) {
         try {
             if (file != null && !file.isEmpty()) {
+                // Validating image file type (optional but recommended)
+                String contentType = file.getContentType();
+                if (!"image/jpeg".equals(contentType) && !"image/png".equals(contentType)) {
+                    throw new IllegalArgumentException("Only JPEG and PNG images are supported");
+                }
                 String imageUrl = imageConfig.saveImage(file, request);
                 monkey.setImageUrl(imageUrl);
             }
         } catch (IOException e) {
-            throw new RuntimeException("Server error while saving image");
+            throw new RuntimeException("Server error while saving image: " + e.getMessage());
         }
     }
 
     private void validateUpdate(Monkey monkey) {
         if (monkeyRepository.existsByNameAndIdNot(monkey.getName(), monkey.getId())) {
-            throw new RuntimeException("Monkey with this name already exists");
+            throw new IllegalArgumentException("A monkey with the name '" + monkey.getName() + "' already exists");
         }
     }
 }
